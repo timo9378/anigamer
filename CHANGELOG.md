@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-28
+
+### Added
+
+- `HistoryEntry.cover` — thumbnail cover URL included directly in the history response, so you can avoid an extra `animeInfo()` request per anime in most cases.
+- `HistoryEntry.duration` — episode runtime in minutes.
+- README "Authentication & session lifetime" section documenting the read-only, no-auto-login stance and the recommended "warn before expiry" pattern.
+
+### Fixed
+
+- `HistoryEntry.watchedAt` was always `undefined` — it read a non-existent `time` field; Bahamut's actual field is `watchTime`. Now mapped correctly.
+
 ## [0.1.0] - 2026-05-28
 
 ### Added
@@ -19,5 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live integration test (`pnpm test:integration`) — opt-in via `BAHAMUT_COOKIE` env.
 - Dual ESM/CJS build, full TypeScript types, zero runtime deps.
 
-[Unreleased]: https://github.com/timo9378/anigamer/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/timo9378/anigamer/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/timo9378/anigamer/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/timo9378/anigamer/releases/tag/v0.1.0

@@ -83,6 +83,30 @@ if (status?.isExpiringSoon) console.warn('JWT expires at', status.expiresAt);
 if (status?.isExpired) console.error('JWT expired — re-grab cookie.');
 ```
 
+## Authentication & session lifetime
+
+**This SDK does not — and intentionally will not — perform automated login.**
+
+Bahamut's login is gated by Google reCAPTCHA. The only ways to bypass it (paid captcha-solving services, headless browsers with human interaction, token forgery) are fragile, against Bahamut's ToS, and a good way to get a project taken down. So `anigamer` stays **read-only on your own account data, using a cookie you provide**. We never log in for you, never automate in-app actions (sign-in, lottery, quiz answering), and never store your password.
+
+What that means for "set it and forget it":
+
+- `BAHARUNE` (the auth JWT) has a fixed expiry of ~14 days.
+- While your process keeps making requests, Bahamut **may** rotate the cookie via `Set-Cookie` — the SDK captures and persists this automatically (see [Cookie auto-rotation](#cookie-auto-rotation)). This is best-effort renewal, not guaranteed.
+- Whether rotation actually extends the session indefinitely is **not something we can promise** — it depends on Bahamut's server behavior, which is undocumented and may change.
+
+**The robust pattern is "runs automatically, warns loudly before it dies":**
+
+```ts
+const status = client.jwtStatus();
+if (status?.isExpiringSoon) {
+  // < 24h left — fire your own alert (Discord / email / log) so you can refresh in time
+  notify(`Bahamut cookie expires ${status.expiresAt.toISOString()} — re-grab it.`);
+}
+```
+
+When the cookie does expire, refreshing it is a ~5-minute manual step (log in on the website, copy the cookie again). The SDK gives you the early warning; it can't do the re-login itself.
+
 ## API
 
 ### `new AniGamer(options)`
