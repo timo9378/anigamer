@@ -59,7 +59,7 @@
     "@vitest/coverage-v8": "^4.1.7",
     "tsup": "^8.3.0",
     "typescript": "^6.0.3",
-    "vite": "^6.4.2",
+    "vite": "^8.0.14",
     "vitest": "^4.1.7"
   },
   "packageManager": "pnpm@9.0.0"
