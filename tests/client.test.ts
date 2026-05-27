@@ -161,6 +161,22 @@ describe('AniGamer', () => {
     expect(info.title).toBeNull();
   });
 
+  it('historyAll uses default options when none supplied', async () => {
+    let n = 0;
+    const fakeFetch = vi.fn<typeof fetch>().mockImplementation(async () => {
+      n += 1;
+      return jsonResponse({
+        data: {
+          history: n === 1 ? [{ animeSn: 1, videoSn: 1, title: 'A' }] : [],
+          totalPage: 1,
+        },
+      });
+    });
+    const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
+    const result = await client.historyAll();
+    expect(result).toHaveLength(1);
+  });
+
   it('historyAll honors maxPages cap', async () => {
     let n = 0;
     const fakeFetch = vi.fn<typeof fetch>().mockImplementation(async () => {
