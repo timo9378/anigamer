@@ -15,7 +15,9 @@ interface RawHistoryResponse {
   };
 }
 
-function normalizeEntry(raw: NonNullable<NonNullable<RawHistoryResponse['data']>['history']>[number]): HistoryEntry {
+function normalizeEntry(
+  raw: NonNullable<NonNullable<RawHistoryResponse['data']>['history']>[number],
+): HistoryEntry {
   const entry: HistoryEntry = {
     animeSn: raw.animeSn,
     videoSn: raw.videoSn,

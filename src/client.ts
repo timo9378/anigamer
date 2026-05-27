@@ -1,12 +1,12 @@
-import {
-  parseCookieString,
-  validateBahamutCookies,
-  type CookieJar,
-} from './cookies.js';
-import { checkJwtExpiry, type JwtExpiry } from './jwt.js';
-import { DEFAULT_USER_AGENT, type HttpContext } from './http.js';
-import { fetchHistoryPage, fetchAllHistory, type FetchAllHistoryOptions } from './endpoints/history.js';
+import { type CookieJar, parseCookieString, validateBahamutCookies } from './cookies.js';
 import { fetchAnimeInfo, fetchCover } from './endpoints/anime-info.js';
+import {
+  type FetchAllHistoryOptions,
+  fetchAllHistory,
+  fetchHistoryPage,
+} from './endpoints/history.js';
+import { DEFAULT_USER_AGENT, type HttpContext } from './http.js';
+import { checkJwtExpiry, type JwtExpiry } from './jwt.js';
 import type { AnimeInfo, ClientOptions, HistoryEntry, HistoryPage } from './types.js';
 
 export class AniGamer {
@@ -14,7 +14,9 @@ export class AniGamer {
 
   constructor(options: ClientOptions) {
     const jar: CookieJar =
-      typeof options.cookie === 'string' ? parseCookieString(options.cookie) : { ...options.cookie };
+      typeof options.cookie === 'string'
+        ? parseCookieString(options.cookie)
+        : { ...options.cookie };
 
     this.#ctx = {
       jar,

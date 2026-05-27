@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a bug — wrong data, broken parsing, crashes, type errors
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **do not include your `BAHARUNE` JWT** anywhere in this issue — it's a credential.
+
+  - type: input
+    id: version
+    attributes:
+      label: anigamer version
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: 20.11.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: A short code snippet that triggers the bug.
+      render: ts
+      placeholder: |
+        import { AniGamer } from 'anigamer';
+        const client = new AniGamer({ cookie: process.env.BAHAMUT_COOKIE! });
+        await client.history(1); // throws
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Paste error message / wrong output. **Redact cookie values.**
+    validations:
+      required: true

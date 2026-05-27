@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { decodeJwtPayload, checkJwtExpiry } from '../src/jwt.js';
+import { describe, expect, it } from 'vitest';
+import { checkJwtExpiry, decodeJwtPayload } from '../src/jwt.js';
 
 function makeJwt(payload: object): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');

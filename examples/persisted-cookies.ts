@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { AniGamer, parseCookieString } from '../src/index.js';
 
 const COOKIE_FILE = '.anigamer-cookies.json';

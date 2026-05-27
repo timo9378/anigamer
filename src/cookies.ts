@@ -26,7 +26,10 @@ export function serializeCookies(jar: CookieJar): string {
  * Accepts either a string (single header) or string[] (Node's combined form).
  * Only the `name=value` pair is kept — attributes (Path, Expires, HttpOnly) are dropped.
  */
-export function mergeSetCookies(jar: CookieJar, setCookie: string | string[] | null | undefined): boolean {
+export function mergeSetCookies(
+  jar: CookieJar,
+  setCookie: string | string[] | null | undefined,
+): boolean {
   if (!setCookie) return false;
   const lines = Array.isArray(setCookie) ? setCookie : [setCookie];
   let changed = false;

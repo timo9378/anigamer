@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AniGamer } from '../src/client.js';
 
 function makeJwt(payload: object): string {
@@ -74,7 +74,8 @@ describe('AniGamer', () => {
   });
 
   it('historyAll() walks pages and de-dupes', async () => {
-    const fakeFetch = vi.fn<typeof fetch>()
+    const fakeFetch = vi
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         jsonResponse({
           data: {
@@ -111,9 +112,11 @@ describe('AniGamer', () => {
         <meta property="og:title" content="進擊的巨人 最終季">
       </head></html>
     `;
-    const fakeFetch = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }),
-    );
+    const fakeFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }),
+      );
     const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
     const info = await client.animeInfo(12345);
     expect(info.cover).toBe('https://p2.bahamut.com.tw/B/ACG/c/ab/cd123.JPG');
@@ -121,10 +124,57 @@ describe('AniGamer', () => {
   });
 
   it('throws on non-2xx response', async () => {
-    const fakeFetch = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response('forbidden', { status: 403, statusText: 'Forbidden' }),
-    );
+    const fakeFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response('forbidden', { status: 403, statusText: 'Forbidden' }));
     const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
     await expect(client.history(1)).rejects.toThrow(/403/);
+  });
+
+  it('throws when fetch is unavailable', () => {
+    expect(
+      () => new AniGamer({ cookie: 'x', fetch: 'not-a-function' as unknown as typeof fetch }),
+    ).toThrow(/fetch unavailable/);
+  });
+
+  it('cover() returns just the og:image URL', async () => {
+    const fakeFetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(`<meta property="og:image" content="https://p2.bahamut.com.tw/cover.jpg">`, {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      }),
+    );
+    const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
+    expect(await client.cover(999)).toBe('https://p2.bahamut.com.tw/cover.jpg');
+  });
+
+  it('animeInfo returns null cover when og:image missing', async () => {
+    const fakeFetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('<html><head><title>nope</title></head></html>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      }),
+    );
+    const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
+    const info = await client.animeInfo(1);
+    expect(info.cover).toBeNull();
+    expect(info.title).toBeNull();
+  });
+
+  it('historyAll honors maxPages cap', async () => {
+    let n = 0;
+    const fakeFetch = vi.fn<typeof fetch>().mockImplementation(async () => {
+      n += 1;
+      return jsonResponse({
+        data: {
+          history: [{ animeSn: n, videoSn: n * 10, title: `page-${n}` }],
+          totalPage: 999,
+        },
+      });
+    });
+    const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
+    const result = await client.historyAll({ maxPages: 3, delayMs: 0 });
+    expect(fakeFetch).toHaveBeenCalledTimes(3);
+    expect(result).toHaveLength(3);
   });
 });

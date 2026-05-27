@@ -1,5 +1,13 @@
 # anigamer
 
+[![CI](https://github.com/timo9378/anigamer/actions/workflows/ci.yml/badge.svg)](https://github.com/timo9378/anigamer/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/anigamer.svg)](https://www.npmjs.com/package/anigamer)
+[![npm downloads](https://img.shields.io/npm/dm/anigamer.svg)](https://www.npmjs.com/package/anigamer)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/anigamer)](https://bundlephobia.com/package/anigamer)
+[![codecov](https://codecov.io/gh/timo9378/anigamer/branch/main/graph/badge.svg)](https://codecov.io/gh/timo9378/anigamer)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![types: TypeScript](https://img.shields.io/npm/types/anigamer.svg)](https://www.typescriptlang.org/)
+
 Unofficial SDK for **巴哈姆特動畫瘋** (`ani.gamer.com.tw`) — user-data side: watch history, cover URLs, cookie auto-rotation.
 
 > Not affiliated with 巴哈姆特 / Gamer Digital Inc. Use at your own risk; respect their TOS.
