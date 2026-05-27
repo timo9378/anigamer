@@ -24,7 +24,7 @@ If you want to build a "what I'm watching" widget, sync to Trakt, feed an LLM yo
 pnpm add anigamer
 ```
 
-Requires Node 18+ (uses native `fetch`).
+Requires Node 20+ (uses native `fetch`).
 
 ## Quick start
 
