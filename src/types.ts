@@ -4,7 +4,15 @@ export interface HistoryEntry {
   title: string;
   /** Episode number as a string ("12", "OVA", etc) — Bahamut sometimes uses non-numeric labels */
   episode?: string;
-  /** ISO-ish timestamp from Bahamut; format varies, don't assume parseable Date */
+  /**
+   * Thumbnail cover URL included directly in the history response
+   * (e.g. `https://p2.bahamut.com.tw/B/ACG/c/.../xxx.JPG`).
+   * Lower-res than the og:image from {@link AnimeInfo.cover} but free — no extra request.
+   */
+  cover?: string;
+  /** Episode runtime in minutes, as reported by Bahamut */
+  duration?: number;
+  /** Watch timestamp, e.g. "2026-05-27 13:20:00" (Bahamut's local time, not ISO) */
   watchedAt?: string;
   /** Raw entry from API, exposed for fields we haven't typed yet */
   raw?: unknown;

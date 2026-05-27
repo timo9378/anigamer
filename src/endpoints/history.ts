@@ -8,7 +8,10 @@ interface RawHistoryResponse {
       videoSn: number;
       title: string;
       episode?: string | number;
-      time?: string;
+      cover?: string;
+      duration?: number;
+      /** Bahamut's field name for the watch timestamp */
+      watchTime?: string;
       [key: string]: unknown;
     }>;
     totalPage?: number;
@@ -25,7 +28,9 @@ function normalizeEntry(
     raw,
   };
   if (raw.episode != null) entry.episode = String(raw.episode);
-  if (raw.time) entry.watchedAt = raw.time;
+  if (raw.cover) entry.cover = raw.cover;
+  if (typeof raw.duration === 'number') entry.duration = raw.duration;
+  if (raw.watchTime) entry.watchedAt = raw.watchTime;
   return entry;
 }
 

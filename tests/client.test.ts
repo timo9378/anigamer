@@ -40,7 +40,17 @@ describe('AniGamer', () => {
       new Response(
         JSON.stringify({
           data: {
-            history: [{ animeSn: 100, videoSn: 200, title: '進擊的巨人', episode: '1' }],
+            history: [
+              {
+                animeSn: 100,
+                videoSn: 200,
+                title: '進擊的巨人',
+                episode: '1',
+                cover: 'https://p2.bahamut.com.tw/B/ACG/c/00/thumb.JPG',
+                duration: 24,
+                watchTime: '2026-05-27 13:20:00',
+              },
+            ],
             totalPage: 1,
           },
         }),
@@ -64,6 +74,9 @@ describe('AniGamer', () => {
     const page = await client.history(1);
     expect(page.entries).toHaveLength(1);
     expect(page.entries[0]?.title).toBe('進擊的巨人');
+    expect(page.entries[0]?.cover).toBe('https://p2.bahamut.com.tw/B/ACG/c/00/thumb.JPG');
+    expect(page.entries[0]?.duration).toBe(24);
+    expect(page.entries[0]?.watchedAt).toBe('2026-05-27 13:20:00');
 
     const [url, init] = fakeFetch.mock.calls[0]!;
     expect(url).toContain('history.php?page=1');
