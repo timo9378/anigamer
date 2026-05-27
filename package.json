@@ -1,0 +1,57 @@
+{
+  "name": "anigamer",
+  "version": "0.1.0",
+  "description": "Unofficial SDK for ani.gamer.com.tw (bahamut animation) — user data: watch history, cover URLs, cookie auto-rotation",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build && pnpm test"
+  },
+  "keywords": [
+    "bahamut",
+    "anigamer",
+    "ani-gamer",
+    "anime",
+    "sdk",
+    "watch-history"
+  ],
+  "author": "timo9378 <timo9378@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/timo9378/anigamer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/timo9378/anigamer/issues"
+  },
+  "homepage": "https://github.com/timo9378/anigamer#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

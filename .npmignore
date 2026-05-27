@@ -1,0 +1,10 @@
+src
+tests
+examples
+.github
+.vscode
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+coverage
+*.tgz
