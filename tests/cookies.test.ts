@@ -67,6 +67,83 @@ describe('mergeSetCookies', () => {
     expect(mergeSetCookies(jar, [])).toBe(false);
     expect(jar).toEqual({ BAHAID: '1' });
   });
+
+  describe('deletion semantics', () => {
+    it('removes cookie when Max-Age=0', () => {
+      const jar: Record<string, string> = { BAHARUNE: 'jwt-value' };
+      const changed = mergeSetCookies(jar, ['BAHARUNE=anything; Max-Age=0; Path=/']);
+      expect(changed).toBe(true);
+      expect('BAHARUNE' in jar).toBe(false);
+    });
+
+    it('removes cookie when Max-Age is negative', () => {
+      const jar: Record<string, string> = { BAHAID: '42' };
+      mergeSetCookies(jar, ['BAHAID=x; Max-Age=-1']);
+      expect('BAHAID' in jar).toBe(false);
+    });
+
+    it('removes cookie when expires is in the past', () => {
+      const jar: Record<string, string> = { BAHAID: '42' };
+      const changed = mergeSetCookies(jar, [
+        'BAHAID=anything; expires=Thu, 01 Jan 1970 00:00:01 GMT; Path=/',
+      ]);
+      expect(changed).toBe(true);
+      expect('BAHAID' in jar).toBe(false);
+    });
+
+    it('handles Bahamut/PHP style "deleted" sentinel + past expires + Max-Age=0', () => {
+      // The exact pattern Bahamut sends when invalidating a web session
+      const jar: Record<string, string> = {
+        BAHAID: 'timo9378',
+        BAHAHASHID: 'c320c9af...',
+        BAHARUNE: 'eyJ0eXAi...realJWT',
+      };
+      const changed = mergeSetCookies(jar, [
+        'BAHAID=deleted; expires=Thu, 01-Jan-1970 00:00:01 GMT; Max-Age=0; path=/',
+        'BAHAHASHID=deleted; expires=Thu, 01-Jan-1970 00:00:01 GMT; Max-Age=0; path=/',
+        'BAHARUNE=deleted; expires=Thu, 01-Jan-1970 00:00:01 GMT; Max-Age=0; path=/',
+      ]);
+      expect(changed).toBe(true);
+      // All three are gone from the jar — NOT stored as "deleted" string
+      expect('BAHAID' in jar).toBe(false);
+      expect('BAHAHASHID' in jar).toBe(false);
+      expect('BAHARUNE' in jar).toBe(false);
+    });
+
+    it('does NOT treat literal "deleted" as deletion if no expiry attr present', () => {
+      // Edge case: a real cookie value that happens to be "deleted" without expiry attrs
+      const jar: Record<string, string> = {};
+      mergeSetCookies(jar, ['SOMETHING=deleted; Path=/']);
+      expect(jar.SOMETHING).toBe('deleted');
+    });
+
+    it('keeps cookie when expires is in the future', () => {
+      const jar: Record<string, string> = { BAHAID: 'old' };
+      const future = new Date(Date.now() + 86_400_000).toUTCString();
+      mergeSetCookies(jar, [`BAHAID=new; expires=${future}; Path=/`]);
+      expect(jar.BAHAID).toBe('new');
+    });
+
+    it('returns false if deletion target was already absent', () => {
+      const jar: Record<string, string> = { BAHAID: '1' };
+      const changed = mergeSetCookies(jar, ['NONEXISTENT=deleted; Max-Age=0']);
+      expect(changed).toBe(false);
+      expect(jar.BAHAID).toBe('1');
+    });
+
+    it('mixed update + delete in one batch', () => {
+      const jar: Record<string, string> = { BAHAID: 'old', BAHARUNE: 'stale-jwt' };
+      const changed = mergeSetCookies(jar, [
+        'BAHAID=new; Path=/',
+        'BAHARUNE=deleted; expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; path=/',
+        'BAHALV=42; Path=/',
+      ]);
+      expect(changed).toBe(true);
+      expect(jar.BAHAID).toBe('new');
+      expect('BAHARUNE' in jar).toBe(false);
+      expect(jar.BAHALV).toBe('42');
+    });
+  });
 });
 
 describe('validateBahamutCookies', () => {

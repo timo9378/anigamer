@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-28
+
+### Fixed
+
+- `mergeSetCookies` now honours cookie deletion semantics. Previously, `Set-Cookie: BAHARUNE=deleted; expires=Thu, 01-Jan-1970 00:00:01 GMT; Max-Age=0` (the standard PHP "kill cookie" pattern Bahamut emits when it invalidates a session) was naively stored as `BAHARUNE=deleted` because the function only read `name=value` and dropped attributes. Now `Max-Age` ≤ 0, past `expires`, and the `value=deleted` + expiry-attr combo all correctly **remove** the cookie from the jar instead. `validate()` therefore reports the cookie as missing after rotation kills it, allowing safety-net alerts to fire on the application side. ([#bahamut-rotate-deleted](https://github.com/timo9378/anigamer/issues))
+
 ## [0.2.0] - 2026-05-28
 
 ### Added
@@ -31,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live integration test (`pnpm test:integration`) — opt-in via `BAHAMUT_COOKIE` env.
 - Dual ESM/CJS build, full TypeScript types, zero runtime deps.
 
-[Unreleased]: https://github.com/timo9378/anigamer/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/timo9378/anigamer/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/timo9378/anigamer/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/timo9378/anigamer/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/timo9378/anigamer/releases/tag/v0.1.0
