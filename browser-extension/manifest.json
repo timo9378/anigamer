@@ -3,7 +3,7 @@
   "name": "Bahamut (動畫瘋) Cookie Pusher",
   "version": "1.2.0",
   "description": "一鍵把目前登入動畫瘋的 cookie 推到你的 anigamer-based 後台,熱更新觀看歷史同步。後台網址可自行設定。",
-  "permissions": ["cookies", "storage", "debugger", "tabs"],
+  "permissions": ["cookies", "storage", "debugger"],
   "optional_host_permissions": [
     "https://*/*",
     "http://*/*"
