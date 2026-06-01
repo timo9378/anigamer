@@ -1,8 +1,7 @@
 /* Bahamut (動畫瘋) Cookie Pusher — popup 邏輯
-   backend-agnostic：後台網址 / 路徑 / header 名 / token 全部可在設定裡改，不綁任何特定站。
-   1. 讀目前瀏覽器對 *.gamer.com.tw 的 cookie（含 HttpOnly，靠 cookies 權限）
-   2. 組成 jar 後 POST 到設定的後台（帶設定的授權 header）
-   3. 後台熱套用 + 立刻重跑同步，回傳剩餘天數與新增筆數 */
+   - host 權限走 optional + 執行期請求：按「抓取」時跳權限視窗，授權後 chrome.cookies 才給 HttpOnly 的 BAHARUNE。
+   - collectJar 跨所有 cookie store（含無痕）、多種查法。
+   - 另含「手動貼 cookie 字串」備援（POST {cookie}）。 */
 
 const DEFAULTS = {
   baseUrl: '',
@@ -17,6 +16,7 @@ const GAMER_URLS = [
   'https://api.gamer.com.tw/',
   'https://www.gamer.com.tw/',
 ];
+const GAMER_ORIGINS = ['https://*.gamer.com.tw/*', 'https://gamer.com.tw/*'];
 
 const $ = (id) => document.getElementById(id);
 const statusEl = $('status');
@@ -31,37 +31,41 @@ async function loadSettings() {
   for (const k of SETTING_KEYS) if ($(k)) $(k).value = s[k];
   return s;
 }
-
 function normalizeSettings() {
-  const s = {
+  return {
     baseUrl: ($('baseUrl').value || '').trim().replace(/\/+$/, ''),
     pushPath: ($('pushPath').value || DEFAULTS.pushPath).trim(),
     statusPath: ($('statusPath').value || DEFAULTS.statusPath).trim(),
     headerName: ($('headerName').value || DEFAULTS.headerName).trim(),
     token: $('token').value.trim(),
   };
-  return s;
+}
+function originPattern(url) {
+  try {
+    return `${new URL(url).origin}/*`;
+  } catch {
+    return null;
+  }
 }
 
-/** Ask for host permission for the configured backend origin (MV3 optional perms). */
-async function ensureHostPermission(baseUrl) {
-  let origin;
-  try {
-    origin = `${new URL(baseUrl).origin}/*`;
-  } catch {
-    throw new Error('後台網址格式不對（需含 https://）');
-  }
-  const has = await chrome.permissions.contains({ origins: [origin] });
-  if (has) return;
-  const granted = await chrome.permissions.request({ origins: [origin] });
-  if (!granted) throw new Error('未授權存取後台網域，無法推送');
+// 直接 request：已授權的話會立刻 resolve(true) 不跳窗、也不需 gesture；
+// 未授權則跳窗（必須在 user gesture 的同步段呼叫，所以別在它前面 await）。
+async function requestOrigins(origins) {
+  return chrome.permissions.request({ origins });
+}
+
+async function ensureBackendPermission(baseUrl) {
+  const origin = originPattern(baseUrl);
+  if (!origin) throw new Error('後台網址格式不對（需含 https://）');
+  const granted = await requestOrigins([origin]);
+  if (!granted) throw new Error('未授權存取後台網域');
 }
 
 async function saveSettings() {
   const s = normalizeSettings();
   if (!s.baseUrl) return setStatus('請先填後台網址。', 'err');
   try {
-    await ensureHostPermission(s.baseUrl); // 需在 user gesture 內（save click）
+    await ensureBackendPermission(s.baseUrl);
   } catch (e) {
     return setStatus(e.message, 'err');
   }
@@ -71,7 +75,6 @@ async function saveSettings() {
 
 async function collectJar() {
   const jar = {};
-  // 跨所有 cookie store（含無痕，前提是擴充被允許在 InPrivate 執行）
   let stores = [{ id: undefined }];
   try {
     const all = await chrome.cookies.getAllCookieStores();
@@ -79,7 +82,6 @@ async function collectJar() {
   } catch {
     /* 取不到就用預設 store */
   }
-  // 用多種查法兜：domain 一次撈整個 gamer.com.tw（含子網域），url 再補
   const queries = [{ domain: 'gamer.com.tw' }, ...GAMER_URLS.map((url) => ({ url }))];
   for (const store of stores) {
     for (const q of queries) {
@@ -101,7 +103,40 @@ function requireConfigured(s) {
   return true;
 }
 
+async function postPayload(s, payload) {
+  await ensureBackendPermission(s.baseUrl);
+  setStatus('推送到後台並重跑同步…');
+  const res = await fetch(s.baseUrl + s.pushPath, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', [s.headerName]: s.token },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    const missing = data.missing ? `（缺 ${data.missing.join(', ')}）` : '';
+    return setStatus(`失敗：${data.message || res.status} ${missing}`, 'err');
+  }
+  const days = data.daysLeft != null ? `，cookie 剩 ${data.daysLeft} 天` : '';
+  const sync = data.sync || {};
+  let syncMsg;
+  if (sync.deadSession) syncMsg = '⚠️ 但同步仍回 NO_LOGIN，cookie 可能無效';
+  else if (sync.ok) syncMsg = `同步成功，新增 ${sync.newEntries ?? 0} 筆`;
+  else syncMsg = '已套用（同步未回報成功）';
+  setStatus(`✅ cookie 已更新${days}\n${syncMsg}`, sync.deadSession ? 'err' : 'ok');
+}
+
 async function push() {
+  // 第一個 await 必須是權限請求（保住 user gesture），否則讀不到 HttpOnly 的 BAHARUNE
+  let granted;
+  try {
+    granted = await requestOrigins(GAMER_ORIGINS);
+  } catch (e) {
+    return setStatus('權限請求失敗：' + e.message, 'err');
+  }
+  if (!granted) {
+    return setStatus('未授權讀取 gamer.com.tw cookie。請在彈出的權限視窗按「允許」後再試。', 'err');
+  }
+
   const s = await loadSettings();
   if (!requireConfigured(s)) return;
 
@@ -111,31 +146,27 @@ async function push() {
     const names = Object.keys(jar);
     const diag =
       names.length === 0
-        ? '讀到 0 個 gamer cookie → 擴充沒拿到網站 cookie 權限（去 edge://extensions → 此擴充「詳細資料」→ 網站存取權設成「在所有網站上」，再重新載入擴充）。'
-        : `讀到 ${names.length} 個 cookie：${names.join(', ')} → 有 cookie 但沒 BAHARUNE，代表這個 cookie store 沒登入（換成「有登入動畫瘋」的那個一般視窗再試）。`;
+        ? '讀到 0 個 cookie → 權限沒生效（剛剛的權限視窗請按「允許」）。'
+        : `讀到 ${names.length} 個 cookie，但沒 HttpOnly 的 BAHARUNE。→ 改用下方「進階：手動貼 cookie」最保險。`;
     return setStatus(`沒抓到有效的 BAHARUNE。\n${diag}`, 'err');
   }
 
   try {
-    await ensureHostPermission(s.baseUrl);
-    setStatus('推送到後台並重跑同步…');
-    const res = await fetch(s.baseUrl + s.pushPath, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', [s.headerName]: s.token },
-      body: JSON.stringify({ jar }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) {
-      const missing = data.missing ? `（缺 ${data.missing.join(', ')}）` : '';
-      return setStatus(`失敗：${data.message || res.status} ${missing}`, 'err');
-    }
-    const days = data.daysLeft != null ? `，cookie 剩 ${data.daysLeft} 天` : '';
-    const sync = data.sync || {};
-    let syncMsg;
-    if (sync.deadSession) syncMsg = '⚠️ 但同步仍回 NO_LOGIN，cookie 可能無效';
-    else if (sync.ok) syncMsg = `同步成功，新增 ${sync.newEntries ?? 0} 筆`;
-    else syncMsg = '已套用（同步未回報成功）';
-    setStatus(`✅ cookie 已更新${days}\n${syncMsg}`, sync.deadSession ? 'err' : 'ok');
+    await postPayload(s, { jar });
+  } catch (e) {
+    setStatus(`連線失敗：${e.message}`, 'err');
+  }
+}
+
+async function pushManual() {
+  const s = await loadSettings();
+  if (!requireConfigured(s)) return;
+  const raw = $('manualCookie').value.trim();
+  if (!raw || !/BAHARUNE=[^;]+\.[^;]+/.test(raw)) {
+    return setStatus('貼上的字串裡找不到有效的 BAHARUNE=…（JWT 形式）。', 'err');
+  }
+  try {
+    await postPayload(s, { cookie: raw });
   } catch (e) {
     setStatus(`連線失敗：${e.message}`, 'err');
   }
@@ -145,7 +176,7 @@ async function checkStatus() {
   const s = await loadSettings();
   if (!requireConfigured(s)) return;
   try {
-    await ensureHostPermission(s.baseUrl);
+    await ensureBackendPermission(s.baseUrl);
     setStatus('查詢後台目前 cookie 狀態…');
     const res = await fetch(s.baseUrl + s.statusPath, { headers: { [s.headerName]: s.token } });
     const data = await res.json().catch(() => ({}));
@@ -165,3 +196,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 $('push').addEventListener('click', push);
 $('check').addEventListener('click', checkStatus);
 $('save').addEventListener('click', saveSettings);
+$('pushManual').addEventListener('click', pushManual);
