@@ -107,6 +107,26 @@ if (status?.isExpiringSoon) {
 
 When the cookie does expire, refreshing it is a ~5-minute manual step (log in on the website, copy the cookie again). The SDK gives you the early warning; it can't do the re-login itself.
 
+### Detecting a dead session
+
+A valid-looking `BAHARUNE` (not expired per `jwtStatus()`) can still be **dead** server-side — e.g. a shared account logged in from elsewhere, or Bahamut invalidating the session. The history API then answers `{"error":{"status":"NO_LOGIN"}}` with **HTTP 200**, so a status-code check won't catch it. Since v0.2.2 the SDK surfaces this as a typed throw instead of a silently-empty result:
+
+```ts
+import { AniGamer, BahamutApiError } from 'anigamer';
+
+try {
+  const all = await client.historyAll();
+} catch (e) {
+  if (e instanceof BahamutApiError && e.isAuthError) {
+    notify('Bahamut session dead (NO_LOGIN) — refresh the cookie.'); // more reliable than jwtStatus alone
+  } else throw e;
+}
+```
+
+### Companion: one-click cookie refresh (optional)
+
+Refreshing the cookie is manual, but it needn't be painful. This repo ships an **optional** companion browser extension under [`browser-extension/`](browser-extension/): after you log into 動畫瘋 it reads the cookies (incl. the HttpOnly `BAHARUNE`, which page JS / bookmarklets can't) and POSTs them to a small endpoint on **your own** backend, which hot-swaps the live client and re-syncs — no env edits, no restart. It's backend-agnostic (endpoint URL / header / paths are all configurable) and entirely optional; the SDK works fine without it. See [`browser-extension/README.md`](browser-extension/README.md) for the expected endpoint contract.
+
 ## API
 
 ### `new AniGamer(options)`

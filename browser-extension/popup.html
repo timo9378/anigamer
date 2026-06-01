@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      width: 340px;
+      margin: 0;
+      padding: 16px;
+      font: 13px/1.5 -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: #15131f;
+      color: #e6e6ef;
+    }
+    h1 { font-size: 14px; margin: 0 0 12px; color: #d8b4fe; }
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #7f5af0;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover { background: #6c47e0; }
+    button:disabled { opacity: .5; cursor: default; }
+    .status {
+      margin: 12px 0 0;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.05);
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 18px;
+    }
+    .status.ok { background: rgba(44,182,125,.15); color: #86efac; }
+    .status.err { background: rgba(255,120,120,.15); color: #fca5a5; }
+    details { margin-top: 14px; }
+    details[open] { margin-bottom: 4px; }
+    summary { cursor: pointer; color: #9b96b8; font-size: 12px; }
+    label { display: block; margin: 10px 0 4px; font-size: 11px; color: #9b96b8; }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 9px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 6px;
+      background: #0f0d18;
+      color: #e6e6ef;
+      font-size: 12px;
+    }
+    .hint { font-size: 10px; color: #6b6680; margin: 3px 0 0; }
+    .row { display: flex; gap: 8px; margin-top: 8px; }
+    .secondary { background: rgba(255,255,255,.08); }
+    .secondary:hover { background: rgba(255,255,255,.15); }
+  </style>
+</head>
+<body>
+  <h1>動畫瘋 Cookie Pusher</h1>
+  <button id="push">抓取並推送 cookie</button>
+  <div class="row">
+    <button id="check" class="secondary">檢查後台目前狀態</button>
+  </div>
+  <div id="status" class="status">先到「設定」填好後台網址與 token,登入動畫瘋後再按上面的鈕。</div>
+
+  <details id="settings">
+    <summary>設定</summary>
+
+    <label for="baseUrl">後台網址(含 https://,不含路徑)</label>
+    <input id="baseUrl" type="text" placeholder="https://your-host.example" />
+    <p class="hint">儲存時會請求存取這個網域的權限。</p>
+
+    <label for="pushPath">推送路徑</label>
+    <input id="pushPath" type="text" placeholder="/api/admin/bahamut/cookie" />
+
+    <label for="statusPath">狀態查詢路徑</label>
+    <input id="statusPath" type="text" placeholder="/api/admin/bahamut/status" />
+
+    <label for="headerName">授權 header 名稱</label>
+    <input id="headerName" type="text" placeholder="X-Bahamut-Token" />
+
+    <label for="token">Token(= 後台的 BAHAMUT_PUSH_TOKEN)</label>
+    <input id="token" type="password" placeholder="貼上 token" />
+
+    <div class="row"><button id="save" class="secondary">儲存設定</button></div>
+  </details>
+
+  <script src="popup.js"></script>
+</body>
+</html>
