@@ -1,7 +1,9 @@
 /* Bahamut (動畫瘋) Cookie Pusher — popup 邏輯
-   - host 權限走 optional + 執行期請求：按「抓取」時跳權限視窗，授權後 chrome.cookies 才給 HttpOnly 的 BAHARUNE。
-   - collectJar 跨所有 cookie store（含無痕）、多種查法。
-   - 另含「手動貼 cookie 字串」備援（POST {cookie}）。 */
+   讀 cookie 兩段式：
+     1) chrome.cookies（無聲、無提示列）— 部分環境可直接拿到。
+     2) 拿不到 HttpOnly 的 BAHARUNE 時，自動改用偵錯介面 (CDP Storage.getCookies)，
+        這條不受 host 權限那套限制，一定讀得到 HttpOnly cookie（會閃一下偵錯提示列）。
+   組成 jar 後 POST 到設定的後台（帶授權 header）。另含手動貼 cookie 備援。 */
 
 const DEFAULTS = {
   baseUrl: '',
@@ -16,13 +18,17 @@ const GAMER_URLS = [
   'https://api.gamer.com.tw/',
   'https://www.gamer.com.tw/',
 ];
-const GAMER_ORIGINS = ['https://*.gamer.com.tw/*', 'https://gamer.com.tw/*'];
 
 const $ = (id) => document.getElementById(id);
 const statusEl = $('status');
 const setStatus = (msg, kind = '') => {
   statusEl.textContent = msg;
   statusEl.className = 'status' + (kind ? ' ' + kind : '');
+};
+const hasBaharune = (jar) => !!jar.BAHARUNE && String(jar.BAHARUNE).includes('.');
+const isGamerDomain = (domain) => {
+  const d = (domain || '').replace(/^\./, '');
+  return d === 'gamer.com.tw' || d.endsWith('.gamer.com.tw');
 };
 
 async function loadSettings() {
@@ -47,20 +53,13 @@ function originPattern(url) {
     return null;
   }
 }
-
-// 直接 request：已授權的話會立刻 resolve(true) 不跳窗、也不需 gesture；
-// 未授權則跳窗（必須在 user gesture 的同步段呼叫，所以別在它前面 await）。
-async function requestOrigins(origins) {
-  return chrome.permissions.request({ origins });
-}
-
 async function ensureBackendPermission(baseUrl) {
   const origin = originPattern(baseUrl);
   if (!origin) throw new Error('後台網址格式不對（需含 https://）');
-  const granted = await requestOrigins([origin]);
+  // 已授權 → resolve(true) 不跳窗；未授權 → 跳窗（須在 user gesture 內，故 saveSettings 會先要）
+  const granted = await chrome.permissions.request({ origins: [origin] });
   if (!granted) throw new Error('未授權存取後台網域');
 }
-
 async function saveSettings() {
   const s = normalizeSettings();
   if (!s.baseUrl) return setStatus('請先填後台網址。', 'err');
@@ -73,14 +72,15 @@ async function saveSettings() {
   setStatus('設定已儲存。', 'ok');
 }
 
-async function collectJar() {
+// ── 讀 cookie：方法 1，chrome.cookies（無聲）──────────────────────
+async function collectViaCookiesApi() {
   const jar = {};
   let stores = [{ id: undefined }];
   try {
     const all = await chrome.cookies.getAllCookieStores();
     if (all?.length) stores = all;
   } catch {
-    /* 取不到就用預設 store */
+    /* ignore */
   }
   const queries = [{ domain: 'gamer.com.tw' }, ...GAMER_URLS.map((url) => ({ url }))];
   for (const store of stores) {
@@ -90,11 +90,44 @@ async function collectJar() {
         const cookies = await chrome.cookies.getAll(params);
         for (const c of cookies) jar[c.name] = c.value;
       } catch {
-        /* 某個 store/query 沒權限就跳過 */
+        /* ignore */
       }
     }
   }
   return jar;
+}
+
+// ── 讀 cookie：方法 2，偵錯介面 CDP（一定拿得到 HttpOnly）──────────
+async function collectViaDebugger() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) throw new Error('找不到作用中分頁');
+  const target = { tabId: tab.id };
+  try {
+    await chrome.debugger.attach(target, '1.3');
+  } catch (e) {
+    const msg = String(e?.message || e);
+    if (/already attached|Another debugger/i.test(msg)) {
+      throw new Error('該分頁已開著 DevTools(F12)。請先關閉 DevTools 再按一次。');
+    }
+    throw new Error('無法附加偵錯介面：' + msg);
+  }
+  try {
+    let cookies = [];
+    try {
+      cookies = (await chrome.debugger.sendCommand(target, 'Storage.getCookies', {}))?.cookies || [];
+    } catch {
+      cookies = (await chrome.debugger.sendCommand(target, 'Network.getAllCookies', {}))?.cookies || [];
+    }
+    const jar = {};
+    for (const c of cookies) if (isGamerDomain(c.domain)) jar[c.name] = c.value;
+    return jar;
+  } finally {
+    try {
+      await chrome.debugger.detach(target);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function requireConfigured(s) {
@@ -126,31 +159,22 @@ async function postPayload(s, payload) {
 }
 
 async function push() {
-  // 第一個 await 必須是權限請求（保住 user gesture），否則讀不到 HttpOnly 的 BAHARUNE
-  let granted;
-  try {
-    granted = await requestOrigins(GAMER_ORIGINS);
-  } catch (e) {
-    return setStatus('權限請求失敗：' + e.message, 'err');
-  }
-  if (!granted) {
-    return setStatus('未授權讀取 gamer.com.tw cookie。請在彈出的權限視窗按「允許」後再試。', 'err');
-  }
-
   const s = await loadSettings();
   if (!requireConfigured(s)) return;
 
   setStatus('讀取 cookie…');
-  const jar = await collectJar();
-  if (!jar.BAHARUNE || !String(jar.BAHARUNE).includes('.')) {
-    const names = Object.keys(jar);
-    const diag =
-      names.length === 0
-        ? '讀到 0 個 cookie → 權限沒生效（剛剛的權限視窗請按「允許」）。'
-        : `讀到 ${names.length} 個 cookie，但沒 HttpOnly 的 BAHARUNE。→ 改用下方「進階：手動貼 cookie」最保險。`;
-    return setStatus(`沒抓到有效的 BAHARUNE。\n${diag}`, 'err');
+  let jar = await collectViaCookiesApi(); // 先試無聲的
+  if (!hasBaharune(jar)) {
+    setStatus('改用偵錯介面讀取（會閃一下偵錯提示列，正常）…');
+    try {
+      jar = await collectViaDebugger();
+    } catch (e) {
+      return setStatus(`讀取失敗：${e.message}`, 'err');
+    }
   }
-
+  if (!hasBaharune(jar)) {
+    return setStatus('還是沒抓到 BAHARUNE — 請確認此瀏覽器（一般視窗）已登入動畫瘋。', 'err');
+  }
   try {
     await postPayload(s, { jar });
   } catch (e) {
