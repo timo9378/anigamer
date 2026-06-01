@@ -71,9 +71,26 @@ async function saveSettings() {
 
 async function collectJar() {
   const jar = {};
-  for (const url of GAMER_URLS) {
-    const cookies = await chrome.cookies.getAll({ url });
-    for (const c of cookies) jar[c.name] = c.value;
+  // 跨所有 cookie store（含無痕，前提是擴充被允許在 InPrivate 執行）
+  let stores = [{ id: undefined }];
+  try {
+    const all = await chrome.cookies.getAllCookieStores();
+    if (all?.length) stores = all;
+  } catch {
+    /* 取不到就用預設 store */
+  }
+  // 用多種查法兜：domain 一次撈整個 gamer.com.tw（含子網域），url 再補
+  const queries = [{ domain: 'gamer.com.tw' }, ...GAMER_URLS.map((url) => ({ url }))];
+  for (const store of stores) {
+    for (const q of queries) {
+      const params = store.id ? { ...q, storeId: store.id } : { ...q };
+      try {
+        const cookies = await chrome.cookies.getAll(params);
+        for (const c of cookies) jar[c.name] = c.value;
+      } catch {
+        /* 某個 store/query 沒權限就跳過 */
+      }
+    }
   }
   return jar;
 }
@@ -91,7 +108,12 @@ async function push() {
   setStatus('讀取 cookie…');
   const jar = await collectJar();
   if (!jar.BAHARUNE || !String(jar.BAHARUNE).includes('.')) {
-    return setStatus('沒抓到有效的 BAHARUNE — 請先在這個瀏覽器登入 ani.gamer.com.tw。', 'err');
+    const names = Object.keys(jar);
+    const diag =
+      names.length === 0
+        ? '讀到 0 個 gamer cookie → 擴充沒拿到網站 cookie 權限（去 edge://extensions → 此擴充「詳細資料」→ 網站存取權設成「在所有網站上」，再重新載入擴充）。'
+        : `讀到 ${names.length} 個 cookie：${names.join(', ')} → 有 cookie 但沒 BAHARUNE，代表這個 cookie store 沒登入（換成「有登入動畫瘋」的那個一般視窗再試）。`;
+    return setStatus(`沒抓到有效的 BAHARUNE。\n${diag}`, 'err');
   }
 
   try {
