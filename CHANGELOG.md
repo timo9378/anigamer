@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-01
+
+### Added
+
+- `BahamutApiError` — thrown when a JSON endpoint returns an error envelope (e.g. `{"error":{"code":401,"message":"尚未登入","status":"NO_LOGIN"}}`). Exposes `code`, `status`, and `isAuthError` so callers can tell a session-expired failure (needs cookie refresh) apart from other API errors.
+
+### Changed
+
+- `history()` / `historyAll()` now **throw `BahamutApiError`** when Bahamut replies with an error envelope. These responses arrive with **HTTP 200**, so the SDK previously parsed them as an empty history and returned `[]` — making a dead session (`NO_LOGIN`) indistinguishable from "nothing watched", and letting sync jobs fail silently. Consumers relying on the old silent-empty behaviour should now catch `BahamutApiError` (or check `err.isAuthError`).
+
 ## [0.2.1] - 2026-05-28
 
 ### Fixed
@@ -37,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live integration test (`pnpm test:integration`) — opt-in via `BAHAMUT_COOKIE` env.
 - Dual ESM/CJS build, full TypeScript types, zero runtime deps.
 
-[Unreleased]: https://github.com/timo9378/anigamer/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/timo9378/anigamer/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/timo9378/anigamer/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/timo9378/anigamer/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/timo9378/anigamer/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/timo9378/anigamer/releases/tag/v0.1.0

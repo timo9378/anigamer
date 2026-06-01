@@ -1,4 +1,4 @@
-import { bahamutGet, type HttpContext } from '../http.js';
+import { bahamutGetJson, type HttpContext } from '../http.js';
 import type { HistoryEntry, HistoryPage } from '../types.js';
 
 interface RawHistoryResponse {
@@ -42,8 +42,8 @@ function normalizeEntry(
  */
 export async function fetchHistoryPage(ctx: HttpContext, page: number): Promise<HistoryPage> {
   const url = `https://api.gamer.com.tw/anime/v3/history.php?page=${page}`;
-  const res = await bahamutGet(ctx, { url });
-  const data = (await res.json()) as RawHistoryResponse;
+  // bahamutGetJson surfaces Bahamut's `{error:{status:"NO_LOGIN"}}` (HTTP 200) as a throw.
+  const data = await bahamutGetJson<RawHistoryResponse>(ctx, { url });
   const rawEntries = data?.data?.history ?? [];
   return {
     entries: rawEntries.map(normalizeEntry),

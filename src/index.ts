@@ -8,6 +8,7 @@ export {
   validateBahamutCookies,
 } from './cookies.js';
 export type { FetchAllHistoryOptions } from './endpoints/history.js';
+export { BahamutApiError } from './errors.js';
 export { checkJwtExpiry, decodeJwtPayload, type JwtExpiry } from './jwt.js';
 export type {
   AnimeInfo,

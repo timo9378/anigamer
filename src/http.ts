@@ -1,4 +1,5 @@
 import { type CookieJar, mergeSetCookies, serializeCookies } from './cookies.js';
+import { BahamutApiError } from './errors.js';
 
 export const DEFAULT_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -59,4 +60,31 @@ export async function bahamutGet(ctx: HttpContext, opts: RequestOptions): Promis
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/** Bahamut wraps failures in `{ error: { code, message, status } }` — see {@link bahamutGetJson}. */
+interface BahamutErrorEnvelope {
+  error?: { code?: number; message?: string; status?: string };
+}
+
+/**
+ * `bahamutGet` + JSON parse + error-envelope handling, shared by every JSON endpoint.
+ *
+ * Bahamut's JSON APIs answer failures (auth, rate-limit, …) with an
+ * `{ "error": { "code": 401, "status": "NO_LOGIN", … } }` body **and HTTP 200**, so a
+ * status check alone can't catch them — parsing naively would mistake a dead session
+ * for an empty result. This throws {@link BahamutApiError} whenever an envelope is
+ * present, giving all current and future endpoints consistent failure semantics.
+ */
+export async function bahamutGetJson<T>(ctx: HttpContext, opts: RequestOptions): Promise<T> {
+  const res = await bahamutGet(ctx, opts);
+  const data = (await res.json()) as T & BahamutErrorEnvelope;
+  if (data && typeof data === 'object' && data.error) {
+    throw new BahamutApiError({
+      code: data.error.code,
+      status: data.error.status,
+      message: data.error.message,
+    });
+  }
+  return data as T;
 }

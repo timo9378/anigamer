@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AniGamer } from '../src/client.js';
+import { BahamutApiError } from '../src/errors.js';
 
 function makeJwt(payload: object): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -142,6 +143,26 @@ describe('AniGamer', () => {
       .mockResolvedValue(new Response('forbidden', { status: 403, statusText: 'Forbidden' }));
     const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
     await expect(client.history(1)).rejects.toThrow(/403/);
+  });
+
+  it('throws BahamutApiError on NO_LOGIN envelope (HTTP 200 + error body)', async () => {
+    const fakeFetch = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () =>
+        jsonResponse({ error: { code: 401, message: '尚未登入', status: 'NO_LOGIN' } }),
+      );
+    const client = new AniGamer({ cookie: 'BAHAID=1; BAHARUNE=x', fetch: fakeFetch });
+    const err = await client.history(1).catch((e) => e);
+    expect(err).toBeInstanceOf(BahamutApiError);
+    expect(err).toMatchObject({ status: 'NO_LOGIN', code: 401, isAuthError: true });
+  });
+
+  it('historyAll() surfaces NO_LOGIN instead of returning empty', async () => {
+    const fakeFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ error: { code: 401, status: 'NO_LOGIN' } }));
+    const client = new AniGamer({ cookie: 'BAHAID=1', fetch: fakeFetch });
+    await expect(client.historyAll({ delayMs: 0 })).rejects.toBeInstanceOf(BahamutApiError);
   });
 
   it('throws when fetch is unavailable', () => {
