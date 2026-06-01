@@ -45,6 +45,14 @@
 
 「檢查後台目前狀態」可不推送、只看後台這份 cookie 還剩幾天。
 
+## 即時觀看（自動,不用按）
+
+裝好後,當你在 `animeVideo.php` 看動畫時,擴充會自動偵測 `<video>` 播放狀態,
+每 30 秒 heartbeat 一次到後台 `POST /api/admin/watch/now`(帶 video_sn + 進度),
+讓網站顯示真正的「● 正在看」。暫停/關頁就停,後台 ~90 秒 TTL 自然清掉。
+只靠 URL 的 `?sn=`、`<video>`、`document.title`,不碰易碎的站內 selector。
+> 用的是設定裡同一組後台網址 + token,不需額外設定。
+
 ## 安全
 
 - Token 等同後台寫入權限,只存在你瀏覽器的 `chrome.storage.local` 與後端 env,別外流。
