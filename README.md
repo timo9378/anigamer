@@ -1,5 +1,7 @@
 # anigamer
 
+> 🦀 **Rust 版**：[crates.io/crates/anigamer](https://crates.io/crates/anigamer)（[timo9378/anigamer-rs](https://github.com/timo9378/anigamer-rs)）— 測試套件 1:1 對齊本套件。
+
 [![CI](https://github.com/timo9378/anigamer/actions/workflows/ci.yml/badge.svg)](https://github.com/timo9378/anigamer/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/anigamer.svg)](https://www.npmjs.com/package/anigamer)
 [![npm downloads](https://img.shields.io/npm/dm/anigamer.svg)](https://www.npmjs.com/package/anigamer)
